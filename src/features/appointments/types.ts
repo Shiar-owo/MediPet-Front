@@ -9,8 +9,11 @@ export interface AppointmentResponse {
   status: AppointmentStatus;
   cancelReason?: string;
   petId: string;
+  petName: string;
   clientId: string;
+  clientName: string;
   veterinarianId: string;
+  veterinarianName: string;
   active: boolean;
 }
 
