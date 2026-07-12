@@ -79,10 +79,15 @@ export function UserFormPage() {
         dateOfBirth: data.dateOfBirth || undefined,
         role: data.role as UserRole,
       }),
-    onSuccess: () => {
-      toast.success('Usuario creado', 'El usuario se registró correctamente.');
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      navigate('/users');
+    onSuccess: (response) => {
+      const userId = response.data?.id;
+      if (selectedFile && userId) {
+        avatarMutation.mutate({ id: userId, file: selectedFile });
+      } else {
+        toast.success('Usuario creado', 'El usuario se registró correctamente.');
+        queryClient.invalidateQueries({ queryKey: ['users'] });
+        navigate('/users');
+      }
     },
     onError: (error) => {
       const { title, message } = getApiErrorMessage(error, 'Usuario');
@@ -175,44 +180,42 @@ export function UserFormPage() {
           <div className="py-12 text-center text-muted-foreground">Cargando...</div>
         ) : (
           <>
-            {isEditing && (
-              <div className="rounded-lg border bg-white p-6 shadow-sm">
-                <h2 className="mb-4 text-lg font-semibold text-foreground">Foto de perfil</h2>
-                <div className="flex items-center gap-6">
-                  <div
-                    className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border bg-muted"
+            <div className="rounded-lg border bg-white p-6 shadow-sm">
+              <h2 className="mb-4 text-lg font-semibold text-foreground">Foto de perfil</h2>
+              <div className="flex items-center gap-6">
+                <div
+                  className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border bg-muted"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {avatarPreview ? (
+                    <img src={avatarPreview} alt="Avatar" className="h-full w-full object-cover" />
+                  ) : (
+                    <Camera size={32} className="text-muted-foreground" />
+                  )}
+                </div>
+                <div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => fileInputRef.current?.click()}
                   >
-                    {avatarPreview ? (
-                      <img src={avatarPreview} alt="Avatar" className="h-full w-full object-cover" />
-                    ) : (
-                      <Camera size={32} className="text-muted-foreground" />
-                    )}
-                  </div>
-                  <div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      <Camera size={16} className="mr-2" />
-                      Cambiar foto
-                    </Button>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      JPEG, PNG, GIF o WebP. Máximo 5MB.
-                    </p>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/jpeg,image/png,image/gif,image/webp"
-                      className="hidden"
-                      onChange={handleFileChange}
-                    />
-                  </div>
+                    <Camera size={16} className="mr-2" />
+                    {avatarPreview ? 'Cambiar foto' : 'Subir foto'}
+                  </Button>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    JPEG, PNG, GIF o WebP. Máximo 5MB.
+                  </p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
                 </div>
               </div>
-            )}
+            </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 rounded-lg border bg-white p-6 shadow-sm">
               {!isEditing && (
