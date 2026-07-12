@@ -8,6 +8,7 @@ import { DashboardPage } from '@/features/dashboard';
 import { ClientListPage, ClientFormPage, ClientDetailPage } from '@/features/clients';
 import { PetListPage, PetFormPage, PetDetailPage } from '@/features/pets';
 import { AppointmentListPage, AppointmentFormPage, AppointmentDetailPage } from '@/features/appointments';
+import { ConsultationListPage, ConsultationFormPage } from '@/features/consultations';
 import { UserListPage, UserFormPage, UserDetailPage } from '@/features/users';
 
 const queryClient = new QueryClient({
@@ -132,6 +133,24 @@ function App() {
               element={
                 <ProtectedRoute>
                   <AppointmentFormPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/appointments/:appointmentId/consultation"
+              element={
+                <ProtectedRoute allowedRoles={['ADMIN', 'VETERINARIO']}>
+                  <ConsultationFormPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/consultations"
+              element={
+                <ProtectedRoute>
+                  <ConsultationListPage />
                 </ProtectedRoute>
               }
             />

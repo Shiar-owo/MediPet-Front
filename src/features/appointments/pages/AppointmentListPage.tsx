@@ -10,11 +10,11 @@ import { appointmentService } from '../services/appointmentService';
 import { getApiErrorMessage } from '@/shared/lib/errors';
 import { format } from 'date-fns';
 
+
 export function AppointmentListPage() {
   const [page, setPage] = useState(0);
   const [date, setDate] = useState('');
   const [cancelId, setCancelId] = useState<string | null>(null);
-  const [completeId, setCompleteId] = useState<string | null>(null);
   const [showMine, setShowMine] = useState(true);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -51,20 +51,6 @@ export function AppointmentListPage() {
       const { title, message } = getApiErrorMessage(error, 'Turno');
       toast.error(title, message);
       setCancelId(null);
-    },
-  });
-
-  const completeMutation = useMutation({
-    mutationFn: (id: string) => appointmentService.complete(id),
-    onSuccess: () => {
-      toast.success('Turno completado', 'El turno se marcó como completado.');
-      queryClient.invalidateQueries({ queryKey: ['appointments'] });
-      setCompleteId(null);
-    },
-    onError: (error) => {
-      const { title, message } = getApiErrorMessage(error, 'Turno');
-      toast.error(title, message);
-      setCompleteId(null);
     },
   });
 
@@ -239,7 +225,7 @@ export function AppointmentListPage() {
                           )}
                           {canComplete(appointment.veterinarianId) && appointment.status === 'PENDIENTE' && (
                             <button
-                              onClick={() => setCompleteId(appointment.id)}
+                              onClick={() => navigate(`/appointments/${appointment.id}/consultation`)}
                               className="rounded-md p-1 text-muted-foreground hover:bg-green-50 hover:text-green-600"
                             >
                               <Check size={16} />
@@ -276,17 +262,6 @@ export function AppointmentListPage() {
             if (cancelId) cancelMutation.mutate(cancelId);
           }}
           onCancel={() => setCancelId(null)}
-        />
-
-        <ConfirmDialog
-          isOpen={Boolean(completeId)}
-          title="Completar Turno"
-          message="¿Marcar este turno como completado?"
-          confirmLabel="Completar"
-          onConfirm={() => {
-            if (completeId) completeMutation.mutate(completeId);
-          }}
-          onCancel={() => setCompleteId(null)}
         />
       </div>
     </Layout>

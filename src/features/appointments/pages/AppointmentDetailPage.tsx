@@ -7,6 +7,7 @@ import { LoadingSpinner, ConfirmDialog, useToast } from '@/shared/components/sha
 import { Button } from '@/shared/components/ui/Button';
 import { useAuth } from '@/shared/context/AuthContext';
 import { appointmentService } from '../services/appointmentService';
+import { consultationService } from '@/features/consultations/services/consultationService';
 import { getApiErrorMessage } from '@/shared/lib/errors';
 import { format } from 'date-fns';
 
@@ -17,7 +18,6 @@ export function AppointmentDetailPage() {
   const toast = useToast();
   const queryClient = useQueryClient();
   const [cancelId, setCancelId] = useState(false);
-  const [completeId, setCompleteId] = useState(false);
 
   const { data: appointmentData, isLoading } = useQuery({
     queryKey: ['appointment', id],
@@ -26,6 +26,14 @@ export function AppointmentDetailPage() {
   });
 
   const appointment = appointmentData?.data;
+
+  const { data: consultationData } = useQuery({
+    queryKey: ['consultation', 'appointment', id],
+    queryFn: () => consultationService.getByAppointmentId(id!),
+    enabled: Boolean(id) && appointment?.status === 'COMPLETADA',
+  });
+
+  const consultation = consultationData?.data;
 
   const canEdit = appointment
     ? user?.role === 'ADMIN' || user?.role === 'RECEPCIONISTA' || appointment.veterinarianId === user?.id
@@ -47,21 +55,6 @@ export function AppointmentDetailPage() {
       const { title, message } = getApiErrorMessage(error, 'Turno');
       toast.error(title, message);
       setCancelId(false);
-    },
-  });
-
-  const completeMutation = useMutation({
-    mutationFn: () => appointmentService.complete(id!),
-    onSuccess: () => {
-      toast.success('Turno completado', 'El turno se marcó como completado.');
-      queryClient.invalidateQueries({ queryKey: ['appointment', id] });
-      queryClient.invalidateQueries({ queryKey: ['appointments'] });
-      setCompleteId(false);
-    },
-    onError: (error) => {
-      const { title, message } = getApiErrorMessage(error, 'Turno');
-      toast.error(title, message);
-      setCompleteId(false);
     },
   });
 
@@ -102,7 +95,7 @@ export function AppointmentDetailPage() {
               {canComplete && appointment.status === 'PENDIENTE' && (
                 <Button
                   variant="default"
-                  onClick={() => setCompleteId(true)}
+                  onClick={() => navigate(`/appointments/${id}/consultation`)}
                 >
                   <Check size={16} className="mr-2" />
                   Completar
@@ -206,6 +199,54 @@ export function AppointmentDetailPage() {
             </dl>
           </div>
         </div>
+
+        {appointment.status === 'COMPLETADA' && consultation && (
+          <div className="rounded-lg border bg-white p-6 shadow-sm">
+            <h2 className="mb-4 text-lg font-semibold text-foreground">
+              Consulta Médica
+            </h2>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {consultation.weight != null && (
+                <div>
+                  <dt className="text-sm text-muted-foreground">Peso</dt>
+                  <dd className="text-sm font-medium text-foreground">{consultation.weight} kg</dd>
+                </div>
+              )}
+              {consultation.temperature != null && (
+                <div>
+                  <dt className="text-sm text-muted-foreground">Temperatura</dt>
+                  <dd className="text-sm font-medium text-foreground">{consultation.temperature}°C</dd>
+                </div>
+              )}
+            </div>
+            <dl className="mt-4 space-y-3">
+              {consultation.symptoms && (
+                <div>
+                  <dt className="text-sm text-muted-foreground">Síntomas</dt>
+                  <dd className="text-sm font-medium text-foreground">{consultation.symptoms}</dd>
+                </div>
+              )}
+              {consultation.diagnosis && (
+                <div>
+                  <dt className="text-sm text-muted-foreground">Diagnóstico</dt>
+                  <dd className="text-sm font-medium text-foreground">{consultation.diagnosis}</dd>
+                </div>
+              )}
+              {consultation.treatment && (
+                <div>
+                  <dt className="text-sm text-muted-foreground">Tratamiento</dt>
+                  <dd className="text-sm font-medium text-foreground">{consultation.treatment}</dd>
+                </div>
+              )}
+              {consultation.notes && (
+                <div>
+                  <dt className="text-sm text-muted-foreground">Notas</dt>
+                  <dd className="text-sm font-medium text-foreground">{consultation.notes}</dd>
+                </div>
+              )}
+            </dl>
+          </div>
+        )}
       </div>
 
       <ConfirmDialog
@@ -216,15 +257,6 @@ export function AppointmentDetailPage() {
         variant="destructive"
         onConfirm={() => cancelMutation.mutate()}
         onCancel={() => setCancelId(false)}
-      />
-
-      <ConfirmDialog
-        isOpen={completeId}
-        title="Completar Turno"
-        message="¿Marcar este turno como completado?"
-        confirmLabel="Completar"
-        onConfirm={() => completeMutation.mutate()}
-        onCancel={() => setCompleteId(false)}
       />
     </Layout>
   );

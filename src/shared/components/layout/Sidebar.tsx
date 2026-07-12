@@ -5,6 +5,7 @@ import {
   Users,
   PawPrint,
   Calendar,
+  Stethoscope,
   UserCog,
   LogOut,
   Menu,
@@ -19,6 +20,7 @@ const navItems = [
   { to: '/clients', label: 'Clientes', icon: Users, roles: ['ADMIN', 'VETERINARIO', 'RECEPCIONISTA'] },
   { to: '/pets', label: 'Mascotas', icon: PawPrint, roles: ['ADMIN', 'VETERINARIO', 'RECEPCIONISTA'] },
   { to: '/appointments', label: 'Turnos', icon: Calendar, roles: ['ADMIN', 'VETERINARIO', 'RECEPCIONISTA'] },
+  { to: '/consultations', label: 'Consultas', icon: Stethoscope, roles: ['ADMIN', 'VETERINARIO', 'RECEPCIONISTA'] },
   { to: '/users', label: 'Usuarios', icon: UserCog, roles: ['ADMIN'] },
 ];
 
