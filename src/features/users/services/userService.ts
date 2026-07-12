@@ -17,6 +17,11 @@ export const userService = {
     return response.data;
   },
 
+  getVeterinarians: async (params?: PaginationParams): Promise<ApiResponse<import('@/shared/types').PageResponse<UserResponse>>> => {
+    const response = await api.get('/users/veterinarians', { params });
+    return response.data;
+  },
+
   getById: async (id: string): Promise<ApiResponse<UserResponse>> => {
     const response = await api.get(`/users/${id}`);
     return response.data;
