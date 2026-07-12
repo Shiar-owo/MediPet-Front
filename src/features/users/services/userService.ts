@@ -8,7 +8,13 @@ export interface RegisterUserRequest {
   firstName?: string;
   lastName?: string;
   phone?: string;
+  address?: string;
+  dateOfBirth?: string;
   role?: import('@/shared/types').UserRole;
+}
+
+export interface AvatarUploadResponse {
+  avatar: string;
 }
 
 export const userService = {
@@ -44,6 +50,15 @@ export const userService = {
 
   deactivate: async (id: string): Promise<ApiResponse<void>> => {
     const response = await api.patch(`/users/${id}/deactivate`);
+    return response.data;
+  },
+
+  uploadAvatar: async (id: string, file: File): Promise<ApiResponse<AvatarUploadResponse>> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post(`/users/${id}/avatar`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return response.data;
   },
 };
