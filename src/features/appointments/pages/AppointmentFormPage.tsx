@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Layout } from '@/shared/components/layout/Layout';
 import { Input, Select, DatePicker, TimeInput, Button } from '@/shared/components/ui';
 import { useToast } from '@/shared/components/shared/Toast';
+import { useAuth } from '@/shared/context/AuthContext';
 import { appointmentService } from '../services/appointmentService';
 import { clientService } from '@/features/clients/services/clientService';
 import { petService } from '@/features/pets/services/petService';
@@ -31,6 +32,8 @@ export function AppointmentFormPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const toast = useToast();
+  const { user } = useAuth();
+  const isVet = user?.role === 'VETERINARIO';
 
   const { data: appointmentData, isLoading: loadingAppointment } = useQuery({
     queryKey: ['appointment', id],
@@ -45,7 +48,8 @@ export function AppointmentFormPage() {
 
   const { data: vetsData } = useQuery({
     queryKey: ['users', 'vets'],
-    queryFn: () => userService.getAll({ page: 0, size: 100 }),
+    queryFn: () => userService.getVeterinarians({ page: 0, size: 100 }),
+    enabled: !isVet,
   });
 
   const {
@@ -56,6 +60,11 @@ export function AppointmentFormPage() {
     formState: { errors, isSubmitting },
   } = useForm<AppointmentFormData>({
     resolver: zodResolver(appointmentSchema),
+    defaultValues: {
+      clientId: '',
+      petId: '',
+      veterinarianId: isVet ? user?.id : '',
+    },
   });
 
   const selectedClientId = watch('clientId');
@@ -108,19 +117,22 @@ export function AppointmentFormPage() {
   });
 
   const onSubmit = (data: AppointmentFormData) => {
+    const payload = isVet ? { ...data, veterinarianId: user!.id } : data;
     if (isEditing) {
-      updateMutation.mutate(data);
+      updateMutation.mutate(payload);
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(payload);
     }
   };
 
   const isLoading = isSubmitting || createMutation.isPending || updateMutation.isPending;
   const clients = clientsData?.data?.content ?? [];
   const pets = petsData?.data?.content ?? [];
-  const vets = (vetsData?.data?.content ?? []).filter(
-    (v) => v.role === 'VETERINARIO' && v.active
-  );
+  const vets = (vetsData?.data?.content ?? []).filter((v) => v.active);
+
+  const currentVet = isVet
+    ? vetsData?.data?.content?.find((v) => v.id === user?.id)
+    : null;
 
   return (
     <Layout>
@@ -170,16 +182,24 @@ export function AppointmentFormPage() {
               disabled={!selectedClientId}
               {...register('petId')}
             />
-            <Select
-              label="Veterinario"
-              placeholder="Seleccionar veterinario"
-              options={vets.map((v) => ({
-                value: v.id,
-                label: `${v.firstName} ${v.lastName}`,
-              }))}
-              error={errors.veterinarianId?.message}
-              {...register('veterinarianId')}
-            />
+            {isVet ? (
+              <Input
+                label="Veterinario"
+                value={currentVet ? `${currentVet.firstName} ${currentVet.lastName}` : user?.email || ''}
+                disabled
+              />
+            ) : (
+              <Select
+                label="Veterinario"
+                placeholder="Seleccionar veterinario"
+                options={vets.map((v) => ({
+                  value: v.id,
+                  label: `${v.firstName} ${v.lastName}`,
+                }))}
+                error={errors.veterinarianId?.message}
+                {...register('veterinarianId')}
+              />
+            )}
             <Input
               label="Motivo"
               placeholder="Consulta anual"

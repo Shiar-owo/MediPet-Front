@@ -1,15 +1,23 @@
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { Edit, ArrowLeft } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Edit, ArrowLeft, Check, X } from 'lucide-react';
 import { Layout } from '@/shared/components/layout/Layout';
-import { LoadingSpinner } from '@/shared/components/shared/LoadingSpinner';
+import { LoadingSpinner, ConfirmDialog, useToast } from '@/shared/components/shared';
 import { Button } from '@/shared/components/ui/Button';
+import { useAuth } from '@/shared/context/AuthContext';
 import { appointmentService } from '../services/appointmentService';
+import { getApiErrorMessage } from '@/shared/lib/errors';
 import { format } from 'date-fns';
 
 export function AppointmentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const toast = useToast();
+  const queryClient = useQueryClient();
+  const [cancelId, setCancelId] = useState(false);
+  const [completeId, setCompleteId] = useState(false);
 
   const { data: appointmentData, isLoading } = useQuery({
     queryKey: ['appointment', id],
@@ -18,6 +26,44 @@ export function AppointmentDetailPage() {
   });
 
   const appointment = appointmentData?.data;
+
+  const canEdit = appointment
+    ? user?.role === 'ADMIN' || user?.role === 'RECEPCIONISTA' || appointment.veterinarianId === user?.id
+    : false;
+
+  const canComplete = appointment
+    ? user?.role === 'ADMIN' || appointment.veterinarianId === user?.id
+    : false;
+
+  const cancelMutation = useMutation({
+    mutationFn: () => appointmentService.cancel(id!),
+    onSuccess: () => {
+      toast.success('Turno cancelado', 'El turno se canceló correctamente.');
+      queryClient.invalidateQueries({ queryKey: ['appointment', id] });
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      setCancelId(false);
+    },
+    onError: (error) => {
+      const { title, message } = getApiErrorMessage(error, 'Turno');
+      toast.error(title, message);
+      setCancelId(false);
+    },
+  });
+
+  const completeMutation = useMutation({
+    mutationFn: () => appointmentService.complete(id!),
+    onSuccess: () => {
+      toast.success('Turno completado', 'El turno se marcó como completado.');
+      queryClient.invalidateQueries({ queryKey: ['appointment', id] });
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      setCompleteId(false);
+    },
+    onError: (error) => {
+      const { title, message } = getApiErrorMessage(error, 'Turno');
+      toast.error(title, message);
+      setCompleteId(false);
+    },
+  });
 
   if (isLoading) {
     return (
@@ -51,10 +97,34 @@ export function AppointmentDetailPage() {
               {format(new Date(appointment.date), 'dd/MM/yyyy')} - {appointment.startTime} a {appointment.endTime}
             </p>
           </div>
-          <Button onClick={() => navigate(`/appointments/${id}/edit`)}>
-            <Edit size={16} className="mr-2" />
-            Editar
-          </Button>
+          {canEdit && (
+            <div className="flex gap-2">
+              {canComplete && appointment.status === 'PENDIENTE' && (
+                <Button
+                  variant="default"
+                  onClick={() => setCompleteId(true)}
+                >
+                  <Check size={16} className="mr-2" />
+                  Completar
+                </Button>
+              )}
+              {appointment.status !== 'CANCELADA' && appointment.status !== 'COMPLETADA' && (
+                <Button
+                  variant="destructive"
+                  onClick={() => setCancelId(true)}
+                >
+                  <X size={16} className="mr-2" />
+                  Cancelar
+                </Button>
+              )}
+              {appointment.status === 'PENDIENTE' && (
+                <Button onClick={() => navigate(`/appointments/${id}/edit`)}>
+                  <Edit size={16} className="mr-2" />
+                  Editar
+                </Button>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
@@ -112,37 +182,50 @@ export function AppointmentDetailPage() {
 
           <div className="rounded-lg border bg-white p-6 shadow-sm">
             <h2 className="mb-4 text-lg font-semibold text-foreground">
-              IDs de Referencia
+              Participantes
             </h2>
             <dl className="space-y-3">
               <div>
-                <dt className="text-sm text-muted-foreground">ID del Turno</dt>
-                <dd className="text-sm font-medium text-foreground break-all">
-                  {appointment.id}
+                <dt className="text-sm text-muted-foreground">Mascota</dt>
+                <dd className="text-sm font-medium text-foreground">
+                  {appointment.petName}
                 </dd>
               </div>
               <div>
-                <dt className="text-sm text-muted-foreground">ID del Cliente</dt>
-                <dd className="text-sm font-medium text-foreground break-all">
-                  {appointment.clientId}
+                <dt className="text-sm text-muted-foreground">Cliente</dt>
+                <dd className="text-sm font-medium text-foreground">
+                  {appointment.clientName}
                 </dd>
               </div>
               <div>
-                <dt className="text-sm text-muted-foreground">ID de la Mascota</dt>
-                <dd className="text-sm font-medium text-foreground break-all">
-                  {appointment.petId}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-sm text-muted-foreground">ID del Veterinario</dt>
-                <dd className="text-sm font-medium text-foreground break-all">
-                  {appointment.veterinarianId}
+                <dt className="text-sm text-muted-foreground">Veterinario</dt>
+                <dd className="text-sm font-medium text-foreground">
+                  {appointment.veterinarianName}
                 </dd>
               </div>
             </dl>
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={cancelId}
+        title="Cancelar Turno"
+        message="¿Estás seguro de que deseas cancelar este turno? Esta acción no se puede deshacer."
+        confirmLabel="Cancelar Turno"
+        variant="destructive"
+        onConfirm={() => cancelMutation.mutate()}
+        onCancel={() => setCancelId(false)}
+      />
+
+      <ConfirmDialog
+        isOpen={completeId}
+        title="Completar Turno"
+        message="¿Marcar este turno como completado?"
+        confirmLabel="Completar"
+        onConfirm={() => completeMutation.mutate()}
+        onCancel={() => setCompleteId(false)}
+      />
     </Layout>
   );
 }
