@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit, Eye, X } from 'lucide-react';
+import { Plus, Edit, Eye, X, Check, User, Users } from 'lucide-react';
 import { Layout } from '@/shared/components/layout/Layout';
 import { LoadingSpinner, EmptyState, Pagination, ConfirmDialog, useToast } from '@/shared/components/shared';
 import { Button, DatePicker } from '@/shared/components/ui';
+import { useAuth } from '@/shared/context/AuthContext';
 import { appointmentService } from '../services/appointmentService';
 import { getApiErrorMessage } from '@/shared/lib/errors';
 import { format } from 'date-fns';
@@ -13,18 +14,30 @@ export function AppointmentListPage() {
   const [page, setPage] = useState(0);
   const [date, setDate] = useState('');
   const [cancelId, setCancelId] = useState<string | null>(null);
+  const [completeId, setCompleteId] = useState<string | null>(null);
+  const [showMine, setShowMine] = useState(true);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const toast = useToast();
+  const { user } = useAuth();
+  const isVet = user?.role === 'VETERINARIO';
 
   const { data, isLoading } = useQuery({
-    queryKey: ['appointments', page, date],
-    queryFn: () =>
-      appointmentService.getAll({
+    queryKey: ['appointments', page, date, showMine, user?.id],
+    queryFn: () => {
+      if (isVet && showMine) {
+        return appointmentService.getByVeterinarianId(user!.id, {
+          page,
+          size: 10,
+          date: date || undefined,
+        });
+      }
+      return appointmentService.getAll({
         page,
         size: 10,
         date: date || undefined,
-      }),
+      });
+    },
   });
 
   const cancelMutation = useMutation({
@@ -41,16 +54,46 @@ export function AppointmentListPage() {
     },
   });
 
+  const completeMutation = useMutation({
+    mutationFn: (id: string) => appointmentService.complete(id),
+    onSuccess: () => {
+      toast.success('Turno completado', 'El turno se marcó como completado.');
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      setCompleteId(null);
+    },
+    onError: (error) => {
+      const { title, message } = getApiErrorMessage(error, 'Turno');
+      toast.error(title, message);
+      setCompleteId(null);
+    },
+  });
+
   const appointments = data?.data?.content ?? [];
   const totalPages = data?.data?.totalPages ?? 0;
+
+  const canEdit = (veterinarianId: string) => {
+    if (user?.role === 'ADMIN' || user?.role === 'RECEPCIONISTA') return true;
+    return veterinarianId === user?.id;
+  };
+
+  const canComplete = (veterinarianId: string) => {
+    if (user?.role === 'ADMIN') return true;
+    return veterinarianId === user?.id;
+  };
 
   return (
     <Layout>
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Turnos</h1>
-            <p className="text-muted-foreground">Gestiona los turnos de la clínica</p>
+            <h1 className="text-2xl font-bold text-foreground">
+              {isVet && showMine ? 'Mis Turnos' : 'Turnos'}
+            </h1>
+            <p className="text-muted-foreground">
+              {isVet && showMine
+                ? 'Turnos asignados a ti'
+                : 'Gestiona los turnos de la clínica'}
+            </p>
           </div>
           <Link to="/appointments/new">
             <Button>
@@ -61,6 +104,26 @@ export function AppointmentListPage() {
         </div>
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          {isVet && (
+            <Button
+              variant={showMine ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => { setShowMine(true); setPage(0); }}
+            >
+              <User size={16} className="mr-2" />
+              Mis turnos
+            </Button>
+          )}
+          {isVet && (
+            <Button
+              variant={!showMine ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => { setShowMine(false); setPage(0); }}
+            >
+              <Users size={16} className="mr-2" />
+              Todos
+            </Button>
+          )}
           <div className="w-full max-w-xs">
             <DatePicker
               placeholder="Filtrar por fecha"
@@ -89,8 +152,12 @@ export function AppointmentListPage() {
           <LoadingSpinner className="py-12" />
         ) : appointments.length === 0 ? (
           <EmptyState
-            title="No hay turnos"
-            description="No se encontraron turnos. Crea uno nuevo para comenzar."
+            title={isVet && showMine ? 'No tienes turnos' : 'No hay turnos'}
+            description={
+              isVet && showMine
+                ? 'No tienes turnos asignados. Crea uno nuevo para comenzar.'
+                : 'No se encontraron turnos. Crea uno nuevo para comenzar.'
+            }
           />
         ) : (
           <div className="rounded-lg border bg-white shadow-sm">
@@ -105,7 +172,13 @@ export function AppointmentListPage() {
                       Horario
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                      Motivo
+                      Mascota
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
+                      Cliente
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
+                      Veterinario
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
                       Estado
@@ -124,8 +197,14 @@ export function AppointmentListPage() {
                       <td className="px-4 py-3 text-sm text-muted-foreground">
                         {appointment.startTime} - {appointment.endTime}
                       </td>
+                      <td className="px-4 py-3 text-sm font-medium text-foreground">
+                        {appointment.petName}
+                      </td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">
-                        {appointment.reason || '-'}
+                        {appointment.clientName}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">
+                        {appointment.veterinarianName}
                       </td>
                       <td className="px-4 py-3">
                         <span
@@ -150,13 +229,23 @@ export function AppointmentListPage() {
                           >
                             <Eye size={16} />
                           </button>
-                          <button
-                            onClick={() => navigate(`/appointments/${appointment.id}/edit`)}
-                            className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                          >
-                            <Edit size={16} />
-                          </button>
-                          {appointment.status !== 'CANCELADA' && (
+                          {canEdit(appointment.veterinarianId) && appointment.status !== 'CANCELADA' && appointment.status !== 'COMPLETADA' && (
+                            <button
+                              onClick={() => navigate(`/appointments/${appointment.id}/edit`)}
+                              className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                            >
+                              <Edit size={16} />
+                            </button>
+                          )}
+                          {canComplete(appointment.veterinarianId) && appointment.status === 'PENDIENTE' && (
+                            <button
+                              onClick={() => setCompleteId(appointment.id)}
+                              className="rounded-md p-1 text-muted-foreground hover:bg-green-50 hover:text-green-600"
+                            >
+                              <Check size={16} />
+                            </button>
+                          )}
+                          {canEdit(appointment.veterinarianId) && appointment.status !== 'CANCELADA' && appointment.status !== 'COMPLETADA' && (
                             <button
                               onClick={() => setCancelId(appointment.id)}
                               className="rounded-md p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
@@ -187,6 +276,17 @@ export function AppointmentListPage() {
             if (cancelId) cancelMutation.mutate(cancelId);
           }}
           onCancel={() => setCancelId(null)}
+        />
+
+        <ConfirmDialog
+          isOpen={Boolean(completeId)}
+          title="Completar Turno"
+          message="¿Marcar este turno como completado?"
+          confirmLabel="Completar"
+          onConfirm={() => {
+            if (completeId) completeMutation.mutate(completeId);
+          }}
+          onCancel={() => setCompleteId(null)}
         />
       </div>
     </Layout>
