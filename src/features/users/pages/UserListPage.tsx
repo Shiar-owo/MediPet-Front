@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit, UserCheck, UserX } from 'lucide-react';
+import { Plus, Edit, Eye, UserCheck, UserX } from 'lucide-react';
 import { Layout } from '@/shared/components/layout/Layout';
 import { LoadingSpinner, EmptyState, Pagination, ConfirmDialog, useToast } from '@/shared/components/shared';
 import { Button } from '@/shared/components/ui/Button';
@@ -121,6 +121,12 @@ export function UserListPage() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => navigate(`/users/${user.id}`)}
+                            className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                          >
+                            <Eye size={16} />
+                          </button>
                           <button
                             onClick={() => navigate(`/users/${user.id}/edit`)}
                             className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
