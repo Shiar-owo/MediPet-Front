@@ -6,6 +6,7 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
+  userId: string;
   accessToken: string;
   refreshToken: string;
   email: string;
@@ -26,6 +27,9 @@ export interface RefreshTokenRequest {
 }
 
 export interface RefreshTokenResponse {
+  userId: string;
   accessToken: string;
   refreshToken: string;
+  email: string;
+  role: UserRole;
 }

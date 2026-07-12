@@ -34,8 +34,8 @@ export function LoginPage() {
     try {
       const response = await authService.login(data);
       if (response.success) {
-        const { email, role, accessToken, refreshToken } = response.data;
-        login(email, role, accessToken, refreshToken);
+        const { userId, email, role, accessToken, refreshToken } = response.data;
+        login(userId, email, role, accessToken, refreshToken);
         navigate('/dashboard');
       } else {
         setError(response.error?.message || 'Error al iniciar sesión');

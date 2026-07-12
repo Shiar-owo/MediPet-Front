@@ -5,6 +5,7 @@ import type { UserRole } from '@/shared/types';
 interface AuthContextType {
   isAuthenticated: boolean;
   user: {
+    id: string;
     email: string;
     role: UserRole;
   } | null;

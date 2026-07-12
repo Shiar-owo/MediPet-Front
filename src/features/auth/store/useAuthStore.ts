@@ -4,10 +4,11 @@ import type { UserRole } from '@/shared/types';
 interface AuthState {
   isAuthenticated: boolean;
   user: {
+    id: string;
     email: string;
     role: UserRole;
   } | null;
-  login: (email: string, role: UserRole, accessToken: string, refreshToken: string) => void;
+  login: (id: string, email: string, role: UserRole, accessToken: string, refreshToken: string) => void;
   logout: () => void;
 }
 
@@ -28,13 +29,13 @@ function getInitialAuthState() {
 export const useAuthStore = create<AuthState>((set) => ({
   ...getInitialAuthState(),
 
-  login: (email, role, accessToken, refreshToken) => {
+  login: (id, email, role, accessToken, refreshToken) => {
     localStorage.setItem('accessToken', accessToken);
     localStorage.setItem('refreshToken', refreshToken);
-    localStorage.setItem('user', JSON.stringify({ email, role }));
+    localStorage.setItem('user', JSON.stringify({ id, email, role }));
     set({
       isAuthenticated: true,
-      user: { email, role },
+      user: { id, email, role },
     });
   },
 
