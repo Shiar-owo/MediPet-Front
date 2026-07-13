@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Camera } from 'lucide-react';
+import { Camera, Eye, EyeOff } from 'lucide-react';
 import { Layout } from '@/shared/components/layout/Layout';
 import { Input, Select, Button } from '@/shared/components/ui';
 import { useToast } from '@/shared/components/shared/Toast';
@@ -34,6 +34,7 @@ export function UserFormPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const { data: userData, isLoading: loadingUser } = useQuery({
     queryKey: ['user', id],
@@ -229,9 +230,18 @@ export function UserFormPage() {
                   />
                   <Input
                     label="Contraseña"
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••"
                     error={errors.password?.message}
+                    endIcon={
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="hover:text-foreground"
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    }
                     {...register('password')}
                   />
                 </>
