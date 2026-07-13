@@ -2,7 +2,9 @@ import axios from 'axios';
 import { useAuthStore } from '@/features/auth/store/useAuthStore';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: import.meta.env.VITE_API_URL
+    ? `${import.meta.env.VITE_API_URL}/api`
+    : '/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -61,7 +63,10 @@ api.interceptors.response.use(
       }
 
       try {
-        const response = await axios.post(`${import.meta.env.VITE_API_URL || '/api'}/auth/refresh`, { refreshToken });
+        const baseUrl = import.meta.env.VITE_API_URL
+          ? `${import.meta.env.VITE_API_URL}/api`
+          : '/api';
+        const response = await axios.post(`${baseUrl}/auth/refresh`, { refreshToken });
         const { userId, email, role, accessToken, refreshToken: newRefreshToken } = response.data.data;
         localStorage.setItem('accessToken', accessToken);
         localStorage.setItem('refreshToken', newRefreshToken);
