@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { Eye, EyeOff } from 'lucide-react';
 import { AuthLayout } from '@/shared/components/layout/AuthLayout';
 import { Input, Button } from '@/shared/components/ui';
+import { useToast } from '@/shared/components/shared/Toast';
 import { useAuthStore } from '../store/useAuthStore';
 import { authService } from '../services/authService';
 import { getApiErrorMessage } from '@/shared/lib/errors';
@@ -18,8 +20,17 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
+  const toast = useToast();
+
+  useEffect(() => {
+    if (localStorage.getItem('sessionExpired') === 'true') {
+      localStorage.removeItem('sessionExpired');
+      toast.warning('Sesión expirada', 'Tu sesión ha expirado. Por favor, inicia sesión de nuevo.');
+    }
+  }, [toast]);
 
   const {
     register,
@@ -63,9 +74,18 @@ export function LoginPage() {
         />
         <Input
           label="Contraseña"
-          type="password"
+          type={showPassword ? 'text' : 'password'}
           placeholder="••••••••"
           error={errors.password?.message}
+          endIcon={
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="hover:text-foreground"
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          }
           {...register('password')}
         />
         <Button type="submit" className="w-full" isLoading={isSubmitting}>

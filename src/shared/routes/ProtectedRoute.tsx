@@ -10,7 +10,7 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
   const { isAuthenticated, user } = useAuth();
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !localStorage.getItem('accessToken')) {
     return <Navigate to="/login" replace />;
   }
 

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { useAuthStore } from '@/features/auth/store/useAuthStore';
 
 const api = axios.create({
   baseURL: '/api',
@@ -82,10 +83,8 @@ api.interceptors.response.use(
 );
 
 function clearAuthAndRedirect() {
-  localStorage.removeItem('accessToken');
-  localStorage.removeItem('refreshToken');
-  localStorage.removeItem('user');
-  window.location.href = '/login';
+  useAuthStore.getState().logout();
+  localStorage.setItem('sessionExpired', 'true');
 }
 
 export default api;

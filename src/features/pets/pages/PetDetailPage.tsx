@@ -75,12 +75,12 @@ export function PetDetailPage() {
                 <img
                   src={pet.photoUrl}
                   alt={pet.name}
-                  className="h-48 w-full rounded-lg object-cover"
+                  className="mx-auto h-48 w-48 rounded-lg object-cover"
                 />
               </div>
             )}
             {!pet.photoUrl && (
-              <div className="mb-4 flex h-32 items-center justify-center rounded-lg bg-muted">
+              <div className="mb-4 mx-auto flex h-48 w-48 items-center justify-center rounded-lg bg-muted">
                 <ImageIcon size={32} className="text-muted-foreground/50" />
               </div>
             )}

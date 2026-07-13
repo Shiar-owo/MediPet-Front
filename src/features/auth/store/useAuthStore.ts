@@ -17,9 +17,18 @@ function getInitialAuthState() {
   const userStr = localStorage.getItem('user');
   if (accessToken && userStr) {
     try {
+      const payload = JSON.parse(atob(accessToken.split('.')[1]));
+      if (payload.exp * 1000 < Date.now()) {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+        return { isAuthenticated: false, user: null };
+      }
       const user = JSON.parse(userStr);
       return { isAuthenticated: true, user };
     } catch {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
     }
   }
